@@ -16,6 +16,15 @@ from email.utils import formatdate
 
 from configs import EXECUTABLE_PATH, TARGET_MONTHS, BASE_URL
 
+import logging
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[RichHandler()]
+)
+logger = logging.getLogger(__name__)
+
 def send_email(title, move_in_date, fee, url):
     connection = smtplib.SMTP("smtp.gmail.com", 587)
     connection.starttls()
@@ -39,7 +48,7 @@ def send_email(title, move_in_date, fee, url):
         connection.send_message(msg)
     
     except Exception as e:
-        print(f"メール送信エラー: {str(e)}")
+        logger.error(f"Error sending email: {str(e)}")
     
     finally:
         # Close connection
@@ -75,7 +84,7 @@ def count_total_properties(driver):
     all_property_links = []
     links_per_page = []
     
-    print("Counting total properties across all pages...")
+    logger.info("Counting total properties across all pages...")
     
     page = 1
     while True:
@@ -98,7 +107,7 @@ def count_total_properties(driver):
         page_links = [link.get_attribute('href') for link in detail_links]
         all_property_links.extend(page_links)
         
-        print(f"Page {page}: Found {page_properties} properties")
+        logger.info(f"Page {page}: Found {page_properties} properties")
         
         # 次へボタンがあるかどうか確認
         try:
@@ -112,8 +121,8 @@ def count_total_properties(driver):
         except NoSuchElementException:
             break
     
-    print(f"\nTotal pages: {max_page}")
-    print(f"Total properties: {total_properties}")
+    logger.info(f"Total pages: {max_page}")
+    logger.info(f"Total properties: {total_properties}")
     
     return max_page, total_properties, all_property_links, links_per_page
 
@@ -144,7 +153,8 @@ def process_property_details(driver, property_url, pbar):
             )
             management_fee_text = management_fee_element.text
             # 数値のみを取得
-            management_fee = int(''.join(filter(str.isdigit, management_fee_text)))
+            digits = ''.join(filter(str.isdigit, management_fee_text))
+            management_fee = int(digits) if digits else 0
 
             move_in_element = WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//th[text()='入居']"))
@@ -155,7 +165,7 @@ def process_property_details(driver, property_url, pbar):
 
             pbar.set_description(f"Processing: {title}")
             if check_target_month(move_in_date):
-                pbar.set_description(f"Found: {title}-{move_in_date}")
+                logger.info(f"Found: {title}-{move_in_date}")
 
                 # txtファイルに保存
                 if not os.path.exists(f"物件候補/{move_in_date}-{(rent+management_fee)/10000}万円-{title}.txt"):
@@ -166,7 +176,7 @@ def process_property_details(driver, property_url, pbar):
                     send_email(title, move_in_date, rent+management_fee, property_url)
 
         except Exception as e:
-            pbar.set_description(f"Error getting title: {str(e)[:30]}...")
+            logger.error(f"Error processing property: {str(e)}")
 
         driver.close() # タブを閉じる
         driver.switch_to.window(driver.window_handles[0])
@@ -213,10 +223,10 @@ def main():
                         current_page += 1
                 
     except Exception as e:
-        print(f"\nAn error occurred: {str(e)}")
+        logger.error(f"An error occurred: {str(e)}")
         
     finally:
-        print("\nClosing browser...")
+        logger.info("Closing browser...")
         driver.quit()
 
 if __name__ == "__main__":
