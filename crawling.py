@@ -188,6 +188,12 @@ def process_property_details(driver, property_url, pbar):
 def main():
     os.makedirs("物件候補", exist_ok=True)
 
+    crawled_urls_path = "crawled_urls.txt"
+    crawled_urls = set()
+    if os.path.exists(crawled_urls_path):
+        with open(crawled_urls_path, "r") as f:
+            crawled_urls = set(f.read().splitlines())
+
     options = webdriver.ChromeOptions()
     #  options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--headless")
@@ -208,8 +214,14 @@ def main():
                 current_page = 1
                 
                 for property_url in all_property_links:
+                    if property_url in crawled_urls:
+                        pbar_properties.update(1)
+                        properties_processed += 1
+                        continue
+
                     process_property_details(driver, property_url, pbar_properties)
                     properties_processed += 1
+                    crawled_urls.add(property_url)
                     
                     # ページの更新
                     if properties_processed  == sum(links_per_page[:current_page]):
@@ -220,6 +232,10 @@ def main():
         logger.error(f"An error occurred: {str(e)}")
         
     finally:
+        # クロールしたURLを保存
+        with open(crawled_urls_path, "w") as f:
+            f.write("\n".join(crawled_urls))
+
         logger.info("Closing browser...")
         driver.quit()
 

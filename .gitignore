@@ -5,3 +5,4 @@ my_gmail_account.py
 launch_chrome.sh
 configs.py
 run.sh
+crawled_urls.txt
