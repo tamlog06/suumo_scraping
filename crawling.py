@@ -10,11 +10,10 @@ import re
 import os
 
 import smtplib
-import my_gmail_account as my_gmail
 from email.mime.text import MIMEText
 from email.utils import formatdate
 
-from configs import EXECUTABLE_PATH, TARGET_MONTHS, BASE_URL
+from configs import EXECUTABLE_PATH, TARGET_MONTHS, BASE_URL, GMAIL_ADDRESS, GMAIL_PASSWORD
 
 import logging
 from rich.logging import RichHandler
@@ -28,28 +27,23 @@ logger = logging.getLogger(__name__)
 def send_email(title, move_in_date, fee, url):
     connection = smtplib.SMTP("smtp.gmail.com", 587)
     connection.starttls()
-    connection.login(my_gmail.YOUR_GMAIL_ADDRESS, my_gmail.APP_PASSWORD)
-    
+    connection.login(GMAIL_ADDRESS, GMAIL_PASSWORD)
     # Create message object
     msg = MIMEText(
         f"新着物件\n物件名:{title}\n家賃:{fee/10000}万円\n入居可能日:{move_in_date}\n\n{url}",
         'plain',
         'utf-8'
     )
-    
     # Set email headers
     msg['Subject'] = f"新着物件通知: {move_in_date}-{fee/10000}万円-{title}"
-    msg['From'] = my_gmail.YOUR_GMAIL_ADDRESS
-    msg['To'] = my_gmail.YOUR_GMAIL_ADDRESS
+    msg['From'] = GMAIL_ADDRESS
+    msg['To'] = GMAIL_ADDRESS
     msg['Date'] = formatdate()
-    
     try:
         # Send email
         connection.send_message(msg)
-    
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
-    
     finally:
         # Close connection
         connection.quit()
